@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>DREAM ROM</title>
+<style>
+  :root {
+    --phosphor:       #a8ddd0;
+    --phosphor-mid:   #6ab5a4;
+    --phosphor-dim:   #3a7a6e;
+    --phosphor-ghost: rgba(168, 221, 208, 0.06);
+    --room:           #030408;
+    --screen-bg:      #04080a;
+    --box-sizing: border-box;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    width: 100%; height: 100%;
+    overflow: hidden;
+    background: var(--room);
+    font-family: 'Courier New', 'Lucida Console', monospace;
+  }
+
+  /* ── THE ROOM ─────────────────────────────────────── */
+  /* Ambient light cast by the CRT onto the surrounding dark */
+  .room-light {
+    position: fixed; inset: 0;
+    background:
+      radial-gradient(
+        ellipse 55% 45% at 50% 54%,
+        rgba(90, 175, 160, 0.07) 0%,
+        rgba(60, 130, 120, 0.03) 45%,
+        transparent 70%
+      );
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* Barely-there grain — the texture of the air in a dark room */
+  .room-grain {
+    position: fixed; inset: 0;
+    z-index: 1;
+    pointer-events: none;
+    opacity: 0.55;
+    background-image:
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
+  }
+
+  /* ── MONITOR STAGE ────────────────────────────────── */
+  .stage {
+    position: fixed; inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+  }
+
+  /* The plastic body of the monitor */
+  .monitor {
+    width: min(560px, 88vw);
+    aspect-ratio: 4 / 3;
+    background: #0b0d10;
+    border-radius: 14px 14px 18px 18px;
+    padding: clamp(16px, 3.5vw, 28px);
+    box-shadow:
+      0 0 0 1px #1c2022,
+      0 4px 32px rgba(0,0,0,0.9),
+      0 0 90px  rgba(90, 165, 150, 0.09),
+      0 0 180px rgba(90, 165, 150, 0.04);
+    opacity: 0;
+    animation: monitorOn 2.8s cubic-bezier(0.16, 1, 0.3, 1) forwards 0.6s;
+  }
+
+  /* Glass screen surface */
+  .screen {
+    width: 100%; height: 100%;
+    background: var(--screen-bg);
+    border-radius: 4px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* Very subtle phosphor bloom — light living inside the glass */
+  .bloom {
+    position: absolute; inset: 0;
+    background: radial-gradient(
+      ellipse 80% 70% at 50% 50%,
+      rgba(80, 170, 155, 0.055) 0%,
+      transparent 60%
+    );
+    z-index: 2;
+    pointer-events: none;
+  }
+
+  /* Scanlines — the physical grid of the CRT */
+  .scanlines {
+    position: absolute; inset: 0;
+    background: repeating-linear-gradient(
+      to bottom,
+      transparent          0px,
+      transparent          3px,
+      rgba(0,0,0,0.09)     3px,
+      rgba(0,0,0,0.09)     4px
+    );
+    z-index: 20;
+    pointer-events: none;
+  }
+
+  /* Edge vignette — the curvature of the glass, darkness at the corners */
+  .vignette {
+    position: absolute; inset: 0;
+    background: radial-gradient(
+      ellipse at 50% 50%,
+      transparent          48%,
+      rgba(0, 0, 0, 0.45) 100%
+    );
+    z-index: 15;
+    pointer-events: none;
+  }
+
+  /* Barely-there horizontal sweep — a ghost in the machine */
+  .sweep {
+    position: absolute;
+    left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(
+      to right,
+      transparent,
+      rgba(168, 221, 208, 0.03),
+      transparent
+    );
+    top: -2px;
+    z-index: 18;
+    animation: sweep 14s linear infinite 4s;
+    pointer-events: none;
+  }
+
+  /* ── TEXT CONTENT ─────────────────────────────────── */
+  .content {
+    position: absolute; inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: clamp(16px, 2.8vw, 24px);
+    z-index: 10;
+  }
+
+  /* The title — the name written in light */
+  .title {
+    font-size: clamp(10px, 1.9vw, 15px);
+    font-weight: 400;
+    letter-spacing: 0.55em;
+    color: var(--phosphor);
+    text-transform: uppercase;
+    text-shadow:
+      0 0 3px  var(--phosphor),
+      0 0 10px rgba(168, 221, 208, 0.55),
+      0 0 22px rgba(168, 221, 208, 0.22),
+      0 0 50px rgba(168, 221, 208, 0.08);
+    opacity: 0;
+    animation: apparition 2.4s ease forwards 2.2s;
+  }
+
+  /* The divider — a single ruled line, the breadth of the title */
+  .rule {
+    width: 3em;
+    height: 1px;
+    background: linear-gradient(
+      to right,
+      transparent,
+      var(--phosphor-dim),
+      transparent
+    );
+    opacity: 0;
+    animation: apparition 1.8s ease forwards 3.4s;
+  }
+
+  /* Subtitle — quieter, a whisper beneath the name */
+  .sub {
+    font-size: clamp(7px, 1.1vw, 9px);
+    letter-spacing: 0.4em;
+    color: var(--phosphor-dim);
+    text-transform: uppercase;
+    text-shadow: 0 0 8px rgba(106, 181, 164, 0.35);
+    opacity: 0;
+    animation: apparition 2s ease forwards 4.2s;
+  }
+
+  /* The cursor — the only living pulse in the room */
+  .cursor-row {
+    display: flex;
+    align-items: center;
+    height: clamp(14px, 2vw, 18px);
+    opacity: 0;
+    animation: apparition 1s ease forwards 5.4s;
+  }
+
+  .cursor {
+    display: block;
+    width: clamp(6px, 0.9vw, 8px);
+    height: 100%;
+    background: var(--phosphor);
+    box-shadow:
+      0 0 4px  var(--phosphor),
+      0 0 10px rgba(168, 221, 208, 0.5);
+    animation: blink 1.7s step-end infinite;
+  }
+
+  /* ── AUDIO INVITATION ─────────────────────────────── */
+  .listen {
+    position: fixed;
+    bottom: clamp(16px, 3vh, 28px);
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: clamp(7px, 1vw, 9px);
+    letter-spacing: 0.35em;
+    color: rgba(168, 221, 208, 0.2);
+    text-transform: uppercase;
+    z-index: 100;
+    opacity: 0;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: color 0.5s ease;
+    animation: apparition 2s ease forwards 7s;
+    user-select: none;
+  }
+  .listen:hover    { color: rgba(168, 221, 208, 0.4); }
+  .listen.sounding { color: rgba(168, 221, 208, 0.15); pointer-events: none; }
+
+  /* ── KEYFRAMES ────────────────────────────────────── */
+  @keyframes monitorOn {
+    0%   { opacity: 0;    transform: scale(0.975); }
+    25%  { opacity: 0.25; transform: scale(0.984); }
+    55%  { opacity: 0.7;  transform: scale(0.993); }
+    80%  { opacity: 0.88; }
+    100% { opacity: 1;    transform: scale(1); }
+  }
+
+  @keyframes apparition {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0; }
+  }
+
+  @keyframes sweep {
+    from { top: -2px;  }
+    to   { top: 100%;  }
+  }
+
+  /* Respect reduced motion */
+  @media (prefers-reduced-motion: reduce) {
+    .monitor, .title, .rule, .sub, .cursor-row, .listen {
+      animation-duration: 0.01ms !important;
+      animation-delay: 0.01ms !important;
+    }
+    .cursor { animation: none; opacity: 1; }
+    .sweep  { animation: none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="room-light"></div>
+<div class="room-grain"></div>
+
+<div class="stage">
+  <div class="monitor">
+    <div class="screen">
+      <div class="bloom"></div>
+      <div class="scanlines"></div>
+      <div class="vignette"></div>
+      <div class="sweep"></div>
+      <div class="content">
+        <div class="title">Dream&nbsp;&nbsp;ROM</div>
+        <div class="rule"></div>
+        <div class="sub">an&nbsp;archive</div>
+        <div class="cursor-row"><div class="cursor"></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="listen" id="listenBtn">[ hear the room ]</div>
+
+<script>
+  let sounding = false;
+
+  function startRoom() {
+    if (sounding) return;
+    sounding = true;
+
+    const btn = document.getElementById('listenBtn');
+    if (btn) { btn.textContent = '[ listening ]'; btn.classList.add('sounding'); }
+
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return;
+    const ctx = new AC();
+
+    const master = ctx.createGain();
+    master.gain.setValueAtTime(0, ctx.currentTime);
+    master.gain.linearRampToValueAtTime(0.28, ctx.currentTime + 5);
+    master.connect(ctx.destination);
+
+    // ── CRT electrical hum: 60 Hz fundamental + harmonics
+    [[60, 0.09], [120, 0.045], [180, 0.018], [240, 0.008]].forEach(([freq, amp]) => {
+      const o = ctx.createOscillator();
+      const g = ctx.createGain();
+      o.type = 'sine';
+      o.frequency.value = freq;
+      g.gain.value = amp;
+      o.connect(g); g.connect(master);
+      o.start();
+    });
+
+    // ── Room drone: low A — the warmth of the dark
+    const drone = ctx.createOscillator();
+    const droneGain = ctx.createGain();
+    drone.type = 'sine';
+    drone.frequency.value = 55;
+    droneGain.gain.value = 0;
+    drone.connect(droneGain); droneGain.connect(master);
+    drone.start();
+    droneGain.gain.linearRampToValueAtTime(0.11, ctx.currentTime + 6);
+
+    // Gentle LFO breath on the drone
+    const lfo = ctx.createOscillator();
+    const lfoAmt = ctx.createGain();
+    lfo.type = 'sine';
+    lfo.frequency.value = 0.07;
+    lfoAmt.gain.value = 0.025;
+    lfo.connect(lfoAmt); lfoAmt.connect(droneGain.gain);
+    lfo.start();
+
+    // ── Screen hiss: high-passed noise, barely there
+    const sr = ctx.sampleRate;
+    const buf = ctx.createBuffer(1, sr * 3, sr);
+    const d = buf.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+
+    const noise = ctx.createBufferSource();
+    noise.buffer = buf; noise.loop = true;
+
+    const hp = ctx.createBiquadFilter();
+    hp.type = 'highpass'; hp.frequency.value = 5000; hp.Q.value = 0.4;
+
+    const noiseGain = ctx.createGain();
+    noiseGain.gain.value = 0.18;
+
+    noise.connect(hp); hp.connect(noiseGain); noiseGain.connect(master);
+    noise.start();
+  }
+
+  document.getElementById('listenBtn').addEventListener('click', startRoom);
+  document.addEventListener('keydown', function onKey() {
+    startRoom();
+    document.removeEventListener('keydown', onKey);
+  });
+</script>
+</body>
+</html>
